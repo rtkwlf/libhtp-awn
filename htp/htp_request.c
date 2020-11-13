@@ -2,11 +2,11 @@
  * Copyright (c) 2009-2010 Open Information Security Foundation
  * Copyright (c) 2010-2013 Qualys, Inc.
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
  * met:
- * 
+ *
  * - Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
 
@@ -17,7 +17,7 @@
  * - Neither the name of the Qualys, Inc. nor the names of its
  *   contributors may be used to endorse or promote products derived from
  *   this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -198,7 +198,7 @@ static htp_status_t htp_connp_req_buffer(htp_connp_t *connp) {
         return HTP_OK;
 
     // Check the hard (buffering) limit.
-   
+
     size_t newlen = connp->in_buf_size + len;
 
     // When calculating the size of the buffer, take into account the
@@ -209,7 +209,7 @@ static htp_status_t htp_connp_req_buffer(htp_connp_t *connp) {
 
     if (newlen > connp->in_tx->cfg->field_limit_hard) {
         htp_log(connp, HTP_LOG_MARK, HTP_LOG_ERROR, 0, "Request buffer over the limit: size %zd limit %zd.",
-                newlen, connp->in_tx->cfg->field_limit_hard);        
+                newlen, connp->in_tx->cfg->field_limit_hard);
         return HTP_ERROR;
     }
 
@@ -299,7 +299,7 @@ htp_status_t htp_connp_REQ_CONNECT_CHECK(htp_connp_t *connp) {
         return HTP_DATA_OTHER;
     }
 
-    // Continue to the next step to determine 
+    // Continue to the next step to determine
     // the presence of request body
     connp->in_state = htp_connp_REQ_BODY_DETERMINE;
 
@@ -417,6 +417,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_DATA_END(htp_connp_t *connp) {
         IN_NEXT_BYTE_OR_RETURN(connp);
 
         connp->in_tx->request_message_len++;
+        connp->in_tx->request_total_len++;
 
         if (connp->in_next_byte == LF) {
             connp->in_state = htp_connp_REQ_BODY_CHUNKED_LENGTH;
@@ -460,6 +461,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_DATA(htp_connp_t *connp) {
     connp->in_current_consume_offset += bytes_to_consume;
     connp->in_stream_offset += bytes_to_consume;
     connp->in_tx->request_message_len += bytes_to_consume;
+    connp->in_tx->request_total_len += bytes_to_consume;
     connp->in_chunked_length -= bytes_to_consume;
 
     if (connp->in_chunked_length == 0) {
@@ -481,6 +483,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_DATA(htp_connp_t *connp) {
 htp_status_t htp_connp_REQ_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
     for (;;) {
         IN_COPY_BYTE_OR_RETURN(connp);
+        connp->in_tx->request_total_len++;
 
         // Have we reached the end of the line?
         if (connp->in_next_byte == LF) {
@@ -492,6 +495,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
             }
 
             connp->in_tx->request_message_len += len;
+            connp->in_tx->request_total_len += len;
 
             #ifdef HTP_DEBUG
             fprint_raw_data(stderr, "Chunk length line", data, len);
@@ -509,7 +513,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
 
             // Handle chunk length.
             if (connp->in_chunked_length > 0) {
-                // More data available.                
+                // More data available.
                 connp->in_state = htp_connp_REQ_BODY_CHUNKED_DATA;
             } else if (connp->in_chunked_length == 0) {
                 // End of data.
@@ -636,6 +640,7 @@ htp_status_t htp_connp_REQ_HEADERS(htp_connp_t *connp) {
             return htp_tx_state_request_headers(connp->in_tx);
         }
         IN_COPY_BYTE_OR_RETURN(connp);
+        connp->in_tx->request_total_len++;
 
         // Have we reached the end of the line?
         if (connp->in_next_byte == LF) {
@@ -796,6 +801,7 @@ htp_status_t htp_connp_REQ_LINE_complete(htp_connp_t *connp) {
     if (htp_connp_req_consolidate_data(connp, &data, &len) != HTP_OK) {
         return HTP_ERROR;
     }
+    connp->in_tx->request_total_len += len;
 
     #ifdef HTP_DEBUG
     fprint_raw_data(stderr, __func__, data, len);
@@ -1033,7 +1039,7 @@ int htp_connp_req_data(htp_connp_t *connp, const htp_time_t *timestamp, const vo
         memcpy(&connp->in_timestamp, timestamp, sizeof (*timestamp));
     }
 
-    // Store the current chunk information    
+    // Store the current chunk information
     connp->in_current_data = (unsigned char *) data;
     connp->in_current_len = len;
     connp->in_current_read_offset = 0;

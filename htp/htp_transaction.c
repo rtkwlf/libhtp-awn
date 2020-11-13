@@ -966,6 +966,7 @@ htp_status_t htp_tx_res_process_body_data_ex(htp_tx_t *tx, const void *data, siz
 
     // Keep track of body size before decompression.
     tx->response_message_len += d.len;
+    tx->response_total_len += d.len;
 
     switch (tx->response_content_encoding_processing) {
         case HTP_COMPRESSION_GZIP:
