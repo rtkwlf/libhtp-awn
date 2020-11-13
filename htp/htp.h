@@ -307,6 +307,11 @@ struct htp_tx_t {
     int64_t request_message_len;
 
     /**
+     * The total length of the request including the header.
+     */
+    int64_t request_total_len;
+
+    /**
      * The length of the request entity-body. In most cases, this value
      * will be the same as request_message_len. The values will be different
      * if request compression or chunking were applied. In that case,
@@ -471,6 +476,11 @@ struct htp_tx_t {
      * de-chunking and decompression.
      */
     int64_t response_message_len;
+
+    /**
+     * The length of the response including the header.
+     */
+    int64_t response_total_len;
 
     /**
      * The length of the response entity-body. In most cases, this value

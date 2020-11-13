@@ -294,6 +294,7 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA_END(htp_connp_t *connp) {
         OUT_NEXT_BYTE_OR_RETURN(connp);
 
         connp->out_tx->response_message_len++;
+        connp->out_tx->response_total_len++;
 
         if (connp->out_next_byte == LF) {
             connp->out_state = htp_connp_RES_BODY_CHUNKED_LENGTH;
@@ -399,6 +400,7 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
     for (;;) {
         OUT_COPY_BYTE_OR_RETURN(connp);
 
+        connp->out_tx->response_total_len ++;
         // Have we reached the end of the line? Or is this not chunked after all?
         if (connp->out_next_byte == LF ||
                 (!is_chunked_ctl_char(connp->out_next_byte) && !data_probe_chunk_length(connp))) {
@@ -410,6 +412,7 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
             }
 
             connp->out_tx->response_message_len += len;
+            connp->out_tx->response_total_len += len;
 
             #ifdef HTP_DEBUG
             fprint_raw_data(stderr, "Chunk length line", data, len);
@@ -808,6 +811,8 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
         }
         OUT_COPY_BYTE_OR_RETURN(connp);
 
+        connp->out_tx->response_total_len++;
+
         // Have we reached the end of the line?
         if (connp->out_next_byte != LF && connp->out_next_byte != CR) {
             lfcrending = 0;
@@ -996,6 +1001,7 @@ htp_status_t htp_connp_RES_LINE(htp_connp_t *connp) {
         if (connp->out_status != HTP_STREAM_CLOSED) {
             // Get one byte
             OUT_COPY_BYTE_OR_RETURN(connp);
+            connp->out_tx->response_total_len++;
         }
 
         // Have we reached the end of the line? We treat stream closure as end of line in
